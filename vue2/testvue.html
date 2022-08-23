@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+
+  <div id="app">
+    <span>name: {{ name }}</span>
+    <input type="text" v-model="name">
+    <span>更多: {{ more.like }}</span>
+    <input type="text" v-model="more.like">
+  </div>
+
+  <script>
+    class Vue {
+      constructor(options) {
+        this.$data = options.data;
+        Observer(this.$data);
+        Compile(options.el, this);
+      }
+    };
+
+    function Observer(data) {
+      if (!data || typeof data !== 'object') return;
+
+      const dependency = new Dependency();
+
+      Object.keys(data).forEach(key => {
+        let value = data[key];
+
+        Observer(value); // 劫持子属性
+
+        Object.defineProperty(data, key, {
+          configurable: true,
+          enumerable: true,
+          get() {
+            console.log(`访问了属性: ${key} -> 值: ${value}`);
+            if (Dependency.context) {
+              console.log('Dependency.context = ', Dependency.context);
+              dependency.addSub(Dependency.context);
+            }
+            return value;
+          },
+          set(newVal) {
+            console.log(`设置了属性: ${key} -> 值: ${newVal}`);
+            value = newVal;
+
+            Observer(newVal); // 劫持新属性
+            dependency.notify();
+          }
+        });
+      });
+    };
+
+    function Compile(el, vm) {
+      vm.$el = document.querySelector(el);
+
+      const fragment = document.createDocumentFragment();
+
+      let child;
+      while (child = vm.$el.firstChild) fragment.append(child);
+
+      console.log(fragment)
+
+      fragment_compile(fragment);
+
+      function fragment_compile(node) {
+        const pattern = /\{\{\s*(\S+)\s*\}\}/;
+
+        console.log(node.nodeType);
+        if (node.nodeType === 3) {
+          const {
+            nodeValue
+          } = node;
+
+          const result_regexp = pattern.exec(node.nodeValue);
+          console.log('result_regexp = ', result_regexp);
+
+          if (result_regexp) {
+            const [, key] = result_regexp;
+            const arr = key.split('.');
+            const value = arr.reduce((total, curr) => total[curr], vm.$data);
+            console.log(value);
+
+            node.nodeValue = nodeValue.replace(pattern, value); // 立即执行一遍完成模板替换
+
+            new Watcher(vm, key, newVal => {
+              node.nodeValue = nodeValue.replace(pattern, newVal);
+            });
+          }
+          return;
+        }
+
+        if (node.nodeType === 1 && node.nodeName === 'INPUT') {
+          const attrs = Array.from(node.attributes);
+
+          console.log('attrs = ', attrs);
+
+          attrs.forEach(i => {
+            console.log('i = ', i.nodeName);
+            if (i.nodeName === 'v-model') {
+              const value = i.nodeValue.split('.').reduce((total, curr) => total[curr], vm.$data);
+
+              console.log('i = value = ', i.nodeValue); // 立即执行一遍完成模板替换
+              node.value = value;
+              new Watcher(vm, i.nodeValue, newVal => {
+                node.value = newVal;
+              });
+
+              node.addEventListener('input', e => {
+                const arr1 = i.nodeValue.split('.');
+                console.log('arr1 = ', arr1);
+                const arr2 = arr1.slice(0, arr1.length - 1);
+                console.log('arr2 = ', arr2);
+                const finalAttr = arr2.reduce((total, curr) => total[curr], vm.$data);
+                console.log('finalAttr = ', finalAttr);
+                finalAttr[arr1[arr1.length - 1]] = e.target.value;
+              });
+            }
+          });
+        }
+
+        node.childNodes.forEach(child => fragment_compile(child));
+      };
+
+      vm.$el.appendChild(fragment);
+    };
+
+    class Watcher {
+      constructor(vm, key, callback) {
+        this.vm = vm;
+        this.key = key;
+        this.callback = callback;
+
+        Dependency.context = this; // 临时属性触发 getter
+        key.split('.').reduce((total, curr) => total[curr], vm.$data);
+        Dependency.context = null;
+      }
+
+      update() {
+        const arr = this.key.split('.');
+        const value = arr.reduce((total, curr) => total[curr], this.vm.$data);
+        this.callback(value);
+      }
+    };
+
+    class Dependency {
+      constructor() {
+        this.subscribe = [];
+      }
+
+      addSub(sub) {
+        this.subscribe.push(sub);
+      }
+
+      notify() {
+        this.subscribe.forEach(sub => sub.update());
+      }
+    };
+
+
+    const vm = new Vue({
+      el: '#app',
+      data: {
+        name: 'fatewang',
+        more: {
+          like: 'sleep',
+        }
+      },
+    });
+    console.log(vm);
+  </script>
+
+</body>
+
+</html>
