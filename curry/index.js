@@ -23,7 +23,7 @@ console.log(currySum(1, 2, 3));
 console.log(currySum(1)(2, 3));
 console.log(currySum(1)(2)(3));
 
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> bindCurry >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 function bindCurry(func) {
   return function bindfn() {
