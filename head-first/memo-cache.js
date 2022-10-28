@@ -5,7 +5,7 @@ function add(a, b) {
 function memo(func) {
   const cache = {};
 
-  return function funcB(...args) {
+  return function (...args) {
     const argsKey = args.join('&');
     if (cache[argsKey]) {
       return cache[argsKey];
