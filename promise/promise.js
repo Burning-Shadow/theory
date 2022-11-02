@@ -1,13 +1,13 @@
 const STATUS = {
   PENDING: 'PENDING',
-  RESOLVE: 'RESOLVE',
+  FULLFILLED: 'FULLFILLED',
   REJECT: 'REJECT',
 };
 
-class MyPromise {
+class _Promise {
   constructor(executor) {
-    this.resolveCallback = [];
-    this.rejectCallback = [];
+    this.resolveCallbacks = [];
+    this.rejectCallbacks = [];
     this.status = STATUS.PENDING;
     this.value = undefined;
 
@@ -21,86 +21,66 @@ class MyPromise {
   resolve = (val) => {
     if (this.status === STATUS.PENDING) {
       this.value = val;
-      this.resolveCallback.forEach(_ => _(val));
-      this.status = STATUS.RESOLVE;
+      this.resolveCallbacks.forEach(cb => cb(value));
+      this.status = STATUS.FULLFILLED;
     }
-  };
+  }
 
   reject = (err) => {
     if (this.status === STATUS.PENDING) {
-      this.value = val;
-      this.rejectCallback.forEach(_ => _(err));
+      this.rejectCallbacks.forEach(cb => cb(err));
       this.status = STATUS.REJECT;
     }
-  };
-
-  /*
-  then = (onResolve, onReject) => {
-    const successObserver = onResolve instanceof Function ? onResolve : val => val;
-    const failObserver = onReject instanceof Function ? onReject : err => err;
-
-    if (this.status === STATUS.RESOLVE) {
-      successObserver(this.value);
-    }
-
-    if (this.status === STATUS.REJECT) {
-      failObserver(this.value);
-    }
-
-    if (this.status === STATUS.PENDING) {
-      this.resolveCallback.push(successObserver);
-      this.rejectCallback.push(failObserver);
-    }
-  };
-  */
+  }
 
   then = (successObserver, failObserver) => {
-    const onResolve = successObserver instanceof Function ? successObserver : val => val;
-    const onReject = failObserver instanceof Function ? failObserver : err => err;
+    const onResolve = typeof successObserver === 'function' ? successObserver : val => val;
+    const onReject = typeof failObserver === 'function' ? failObserver : err => err;
 
-    return new MyPromise((resolve, reject) => {
+    /**
+     * 保证链式调用必须返回 promise
+    */
+    return new _Promise((resolve, reject) => {
       try {
-        if (this.status === STATUS.RESOLVE) {
+        if (this.status === STATUS.FULLFILLED) {
           const result = onResolve(this.value);
-          if (result instanceof MyPromise) {
-            result.then(resolve, reject);
-          } else {
-            resolve(result);
-          }
+
+          if (result instanceof _Promise) result.then(resolve, reject);
+          else resolve(result);
         }
 
         if (this.status === STATUS.REJECT) {
           const result = onReject(this.value);
-          if (result instanceof MyPromise) {
-            result.then(resolve, reject);
-          } else {
-            reject(result);
-          }
+
+          if (result instanceof _Promise) result.then(resolve, reject);
+          else reject(result);
         }
 
         if (this.status === STATUS.PENDING) {
-          this.resolveCallback.push(val => {
+          /**
+           * PENDING 状态时需处理对应 callbacks
+          */
+          this.resolveCallbacks.push(val => {
+            console.log('this.resolveCallbacks s push val = ', val);
             const result = onResolve(val);
-            if (result instanceof MyPromise) {
-              result.then(resolve, reject);
-            } else {
-              resolve(result);
-            }
+
+            if (result instanceof _Promise) result.then(resolve, reject);
+            else resolve(result);
           });
-          this.rejectCallback.push(reason => {
-            const result = onReject(reason);
-            if (result instanceof MyPromise) {
-              result.then(resolve, reject);
-            } else {
-              resolve(result);
-            }
+
+          this.rejectCallbacks.push(err => {
+            console.log('this.rejectCallbacks s push err = ', err);
+            const result = onReject(val);
+
+            if (result instanceof _Promise) result.then(resolve, reject);
+            else reject(result);
           });
         }
       } catch (err) {
         reject(err);
       }
     });
-  };
+  }
 
   catch = (onReject) => {
     return this.then(undefined, onReject);
@@ -115,15 +95,16 @@ class MyPromise {
       throw err;
     });
   };
-}
+};
 
-new MyPromise(resolve => {
+
+new _Promise(resolve => {
   setTimeout(() => {
     resolve("hello world");
   }, 1000);
 }).then(value => {
   console.log(value);
-  return new MyPromise(resolve => resolve(value + 1));
+  return new _Promise(resolve => resolve(value + 1));
 }).then(value => {
   console.log(value);
 });
