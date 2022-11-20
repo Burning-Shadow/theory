@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <script>
+    /**
+     * 缓存池
+    */
+    const waitQueue = [];
+    let currSize = 0,
+      maxSize = Infinity;
+
+    function ajax(url, params) {
+      if (currSize >= maxSize) {
+        waitQueue.push({
+          url,
+          params
+        });
+        return;
+      }
+
+      console.log('这部分进入了线程池');
+
+      currSize += 1;
+      // DO AJAX OPERATOR
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve(`url = ${url}, params = ${JSON.stringify(params)}`);
+        }, Math.random() * 10000);
+      }).then(res => {
+        console.log('res = ', res);
+        removeItem();
+        return new Promise(resolve => resolve(res));
+        // return res;
+      });
+    };
+
+    const request = createRequest({
+      max: 3
+    });
+
+    console.log(typeof request);
+
+    for (let i = 0; i < 10; i++) {
+      request(`/user${i}`, {
+        cnt: i
+      }).then(res => console.log(res));
+    }
+
+    /**
+     * Please implement the function createRequest, which could subsequent specified request
+     */
+
+    function createRequest({
+      max
+    }) {
+      maxSize = max;
+
+      return ajax;
+    };
+
+    function doAdd(args) {
+      console.log('doAdd args = ', args);
+      ajax(...Object.values(args));
+    };
+
+    function removeItem() {
+      if (waitQueue.length > 0) {
+        doAdd(waitQueue.pop())
+      } else {
+        currSize--;
+      }
+    }
+
+    console.log('maxSize = ', maxSize);
+  </script>
+</body>
+
+</html>
