@@ -65,6 +65,7 @@ function parseModules(file) {
     }
   });
 
+  console.log('depsGraph = ', depsGraph);
   return depsGraph;
 }
 
