@@ -9,7 +9,38 @@ function echo<T>(arg: T): T {
 
 const str: string = 'str';
 const result = echo(str);
+// ----------------------------------------------------------------------------------------
 
+function logger<Type extends { length: number }>(params: Type): Type {
+  console.log(params.length);
+  return params;
+}
+
+logger({ length: 0 });
+logger([1, 2, 3]);
+logger('12333qjiojfa');
+// logger(1); // number 不能分配给 { length:number }
+// ----------------------------------------------------------------------------------------
+
+function getObjProperty<Type>(obj: Type, key: keyof Type) {
+  return obj[key];
+}
+
+getObjProperty({ a: 1 }, 'a');
+// getProperty({ a: 1}, 'b');
+// ----------------------------------------------------------------------------------------
+
+function getProperty<Type, Key extends keyof Type = keyof Type>(
+  obj: Type,
+  key: Key
+) {
+  return obj[key];
+}
+
+// getProperty({ name: 'senlin', age: 18 }, false); // Error: false不能分配给'name'|'age'
+// getProperty({ name: 'senlin', age: 18 }, '444'); // Error: '444'不能分配给'name'|'age'
+getProperty({ name: 'senlin', age: 18 }, 'name'); // OK: 'senlin'
+// ----------------------------------------------------------------------------------------
 
 function swap<T, U>(tuple: [T, U]): [U, T] {
   return [tuple[1], tuple[0]];
